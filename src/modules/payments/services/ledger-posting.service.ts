@@ -12,6 +12,9 @@ import {
   isPostedGroupBalanced,
   refundFromEscrowIdempotencyBase,
   walletCreditIdempotencyBase,
+  withdrawalPayoutIdempotencyBase,
+  withdrawalReservationIdempotencyBase,
+  withdrawalReversalIdempotencyBase,
   type LedgerPostingContext,
 } from './ledger-posting-helpers';
 
@@ -128,6 +131,54 @@ export class LedgerPostingService {
       debitAccount: 'escrow',
       creditAccount: 'business_cash',
       idempotencyBaseKey: refundFromEscrowIdempotencyBase(context.paymentId, context.commandId),
+    });
+  }
+
+  /** Reserves crew available balance into withdrawal clearing (immutable append). */
+  async postWithdrawalReservation(context: LedgerPostingContext): Promise<PostedLedgerGroup> {
+    if (!context.withdrawalRequestId) {
+      throw new AppError('WITHDRAWAL_ID_REQUIRED', 'withdrawalRequestId is required for reservation.', 422);
+    }
+
+    return this.postBalancedPair({
+      context,
+      transactionType: 'withdrawal',
+      debitAccount: 'crew_wallet_available',
+      creditAccount: 'withdrawal_clearing',
+      idempotencyBaseKey: withdrawalReservationIdempotencyBase(
+        context.withdrawalRequestId,
+        context.commandId,
+      ),
+    });
+  }
+
+  /** Posts external payout completion from withdrawal clearing. */
+  async postWithdrawalPayout(context: LedgerPostingContext): Promise<PostedLedgerGroup> {
+    if (!context.withdrawalRequestId) {
+      throw new AppError('WITHDRAWAL_ID_REQUIRED', 'withdrawalRequestId is required for payout.', 422);
+    }
+
+    return this.postBalancedPair({
+      context,
+      transactionType: 'withdrawal_payout',
+      debitAccount: 'withdrawal_clearing',
+      creditAccount: 'external_payout',
+      idempotencyBaseKey: withdrawalPayoutIdempotencyBase(context.withdrawalRequestId, context.commandId),
+    });
+  }
+
+  /** Reverses a prior withdrawal reservation back to available balance. */
+  async postWithdrawalReservationReversal(context: LedgerPostingContext): Promise<PostedLedgerGroup> {
+    if (!context.withdrawalRequestId) {
+      throw new AppError('WITHDRAWAL_ID_REQUIRED', 'withdrawalRequestId is required for reversal.', 422);
+    }
+
+    return this.postBalancedPair({
+      context,
+      transactionType: 'reversal',
+      debitAccount: 'withdrawal_clearing',
+      creditAccount: 'crew_wallet_available',
+      idempotencyBaseKey: withdrawalReversalIdempotencyBase(context.withdrawalRequestId, context.commandId),
     });
   }
 }

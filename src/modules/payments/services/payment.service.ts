@@ -19,7 +19,7 @@ import { AssignmentRepository } from '@/modules/assignments/repositories';
 import { ProposalRepository } from '@/modules/proposals/repositories';
 import { ShiftRepository } from '@/modules/shifts/repositories';
 import { PaymentRepository } from '@/modules/payments/repositories';
-import type { PaymentDto } from '@/modules/payments/types';
+import type { PaymentDto, PayoutPreparationResult } from '@/modules/payments/types';
 import type { PaymentRecord } from '@/modules/payments/types/payment-records';
 import { paymentWorkflowMachine } from '@/shared/state/workflows/payment-lifecycle';
 import type { PaymentTransitionName } from '@/shared/state/workflows/payment-lifecycle';
@@ -33,14 +33,7 @@ type PaymentTransitionOptions = {
   refundApproved?: boolean;
 };
 
-export type PayoutPreparationResult = {
-  crewUserId: string;
-  currency: string;
-  requestedAmount: string;
-  availableBalance: string;
-  canPayout: boolean;
-  detail?: string;
-};
+export type { PayoutPreparationResult };
 
 export class PaymentService extends AuthenticatedBaseService {
   private readonly executor = new WorkflowTransitionExecutor();

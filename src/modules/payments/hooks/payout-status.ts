@@ -5,6 +5,15 @@ import { formatWorkflowStatusLabel, resolveWorkflowStatusTone } from '@/shared/c
 
 const TERMINAL_WITHDRAWAL_STATUSES: WithdrawalStatus[] = ['paid', 'rejected', 'cancelled'];
 
+const WITHDRAWAL_STATUS_LABELS: Partial<Record<WithdrawalStatus, string>> = {
+  under_review: 'Reviewing',
+  rejected: 'Failed',
+};
+
+export function formatWithdrawalStatusLabel(status: WithdrawalStatus): string {
+  return WITHDRAWAL_STATUS_LABELS[status] ?? formatWorkflowStatusLabel(status);
+}
+
 export function toPayoutStatusDisplay(
   withdrawal: WithdrawalRequestRecord,
   payoutMethodLabel: string | null = null,
@@ -14,7 +23,7 @@ export function toPayoutStatusDisplay(
     withdrawalId: withdrawal.id,
     paymentId: withdrawal.payment_id,
     status: withdrawal.status,
-    operationalLabel: formatWorkflowStatusLabel(withdrawal.status),
+    operationalLabel: formatWithdrawalStatusLabel(withdrawal.status),
     tone: resolveWorkflowStatusTone(withdrawal.status),
     amount: withdrawal.amount,
     currency: withdrawal.currency,

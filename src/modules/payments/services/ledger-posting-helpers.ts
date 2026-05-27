@@ -7,6 +7,7 @@ export type LedgerPostingContext = {
   paymentId: string;
   escrowRecordId?: string;
   refundId?: string;
+  withdrawalRequestId?: string;
   companyProfileId: string;
   crewUserId: string;
   amount: string;
@@ -57,6 +58,7 @@ export function buildBalancedPairInserts(
     payment_id: input.context.paymentId,
     escrow_record_id: input.context.escrowRecordId,
     refund_id: input.context.refundId,
+    withdrawal_request_id: input.context.withdrawalRequestId,
     company_profile_id: input.context.companyProfileId,
     crew_user_id: input.context.crewUserId,
     transaction_type: input.transactionType,
@@ -101,4 +103,16 @@ export function walletCreditIdempotencyBase(paymentId: string, commandId: string
 
 export function refundFromEscrowIdempotencyBase(paymentId: string, commandId: string): string {
   return `payment:${paymentId}:refund:${commandId}`;
+}
+
+export function withdrawalReservationIdempotencyBase(withdrawalId: string, commandId: string): string {
+  return `withdrawal:${withdrawalId}:reservation:${commandId}`;
+}
+
+export function withdrawalPayoutIdempotencyBase(withdrawalId: string, commandId: string): string {
+  return `withdrawal:${withdrawalId}:payout:${commandId}`;
+}
+
+export function withdrawalReversalIdempotencyBase(withdrawalId: string, commandId: string): string {
+  return `withdrawal:${withdrawalId}:reversal:${commandId}`;
 }

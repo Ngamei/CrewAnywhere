@@ -1,6 +1,7 @@
 import { AppError } from '@/shared/api/errors';
 import type { EscrowStatus } from '@/shared/state/enums/escrow-status';
 import type { PaymentStatus } from '@/shared/state/enums/payment-status';
+import type { WithdrawalStatus } from '@/shared/state/enums/withdrawal-status';
 import type { FinanceTransactionType } from '@/shared/state/enums/finance-transaction-type';
 import type { FinanceTransactionRecord } from '@/modules/payments/types/finance-transaction-records';
 import { LedgerRepository } from '@/modules/payments/repositories';
@@ -78,4 +79,56 @@ function groupLinesByLedgerGroup(
     groups.set(line.ledger_entry_group_id, bucket);
   }
   return groups;
+}
+
+export type WithdrawalWorkflowLedgerSyncInput = {
+  withdrawalId: string;
+  withdrawalStatus: WithdrawalStatus;
+  ledgerLines: FinanceTransactionRecord[];
+};
+
+/**
+ * Validates withdrawal workflow state and posted ledger groups stay aligned.
+ */
+export function assertWithdrawalWorkflowLedgerSynchronized(
+  input: WithdrawalWorkflowLedgerSyncInput,
+): void {
+  const grouped = groupLinesByLedgerGroup(input.ledgerLines);
+
+  for (const lines of grouped.values()) {
+    if (!isPostedGroupBalanced(lines)) {
+      throw new AppError(
+        'LEDGER_WORKFLOW_DESYNC',
+        `Ledger group ${lines[0]?.ledger_entry_group_id} is not balanced for withdrawal ${input.withdrawalId}.`,
+        422,
+      );
+    }
+  }
+
+  const postedTypes = new Set(input.ledgerLines.map((line) => line.transaction_type));
+
+  if (input.withdrawalStatus === 'approved' || input.withdrawalStatus === 'processing') {
+    if (!postedTypes.has('withdrawal')) {
+      throw new AppError(
+        'LEDGER_WORKFLOW_DESYNC',
+        `Withdrawal ${input.withdrawalId} is ${input.withdrawalStatus} but reservation ledger is missing.`,
+        422,
+      );
+    }
+  }
+
+  if (input.withdrawalStatus === 'paid' && !postedTypes.has('withdrawal_payout')) {
+    throw new AppError(
+      'LEDGER_WORKFLOW_DESYNC',
+      `Withdrawal ${input.withdrawalId} is paid but payout ledger is missing.`,
+      422,
+    );
+  }
+}
+
+export async function loadWithdrawalLedgerLines(
+  ledger: LedgerRepository,
+  withdrawalRequestId: string,
+): Promise<FinanceTransactionRecord[]> {
+  return ledger.listByWithdrawalRequestId(withdrawalRequestId);
 }

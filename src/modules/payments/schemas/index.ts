@@ -8,8 +8,13 @@ export {
   paymentReleaseSchema,
   paymentTransitionSchema,
   payoutPreparationSchema,
+  withdrawalIdParamSchema,
+  createWithdrawalSchema,
+  withdrawalTransitionSchema,
   type PaymentRefundInput,
   type PaymentReleaseInput,
   type PaymentTransitionInput,
   type PayoutPreparationInput,
+  type CreateWithdrawalInput,
+  type WithdrawalTransitionInput,
 } from './payment.schema';
