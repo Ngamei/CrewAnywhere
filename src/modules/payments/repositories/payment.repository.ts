@@ -278,6 +278,21 @@ export class PaymentRepository extends BaseRepository {
     return (data ?? []) as EscrowRecord[];
   }
 
+  async findActiveWithdrawalByPaymentId(paymentId: string) {
+    const { data, error } = await this.clients.read
+      .from('withdrawal_requests')
+      .select(
+        'id, payment_id, company_profile_id, crew_user_id, payout_method_id, amount, currency, status, status_version, requested_at, processed_at, created_at, updated_at, deleted_at',
+      )
+      .eq('payment_id', paymentId)
+      .is('deleted_at', null)
+      .not('status', 'in', '("rejected","cancelled")')
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  }
+
   async listLedgerGroupsForPayment(paymentId: string, limit = 50) {
     const { data, error } = await this.clients.read
       .from('finance_transactions')

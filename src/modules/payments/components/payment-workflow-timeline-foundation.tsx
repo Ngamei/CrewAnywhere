@@ -2,6 +2,7 @@
 
 import { AuditTimeline } from '@/shared/components/operational';
 import { mapPaymentWorkflowEventsToTimeline } from '@/modules/payments/hooks/payment-timeline';
+import { usePaymentTimeline } from '@/modules/payments/hooks/use-payment-data';
 
 type WorkflowEventRow = {
   workflow_event_id: string;
@@ -40,11 +41,20 @@ const placeholderEvents: WorkflowEventRow[] = [
 ];
 
 type PaymentWorkflowTimelineFoundationProps = {
+  paymentId?: string;
   events?: WorkflowEventRow[];
 };
 
 export function PaymentWorkflowTimelineFoundation({
-  events = placeholderEvents,
+  paymentId,
+  events: eventsProp,
 }: PaymentWorkflowTimelineFoundationProps) {
+  const { data: fetchedEvents, isLoading } = usePaymentTimeline(paymentId);
+  const events = paymentId ? (fetchedEvents ?? []) : (eventsProp ?? placeholderEvents);
+
+  if (isLoading) {
+    return <div className="h-40 animate-pulse rounded-md bg-muted" aria-busy aria-label="Loading payment timeline" />;
+  }
+
   return <AuditTimeline entries={mapPaymentWorkflowEventsToTimeline(events)} />;
 }

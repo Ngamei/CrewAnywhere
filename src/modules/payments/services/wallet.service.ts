@@ -13,7 +13,6 @@ import type {
   WalletDto,
   PayoutStatusDisplay,
 } from '@/modules/payments/types';
-import type { FinanceLedgerAccount } from '@/shared/state/enums/finance-ledger-account';
 import type { FinanceTransactionType } from '@/shared/state/enums/finance-transaction-type';
 
 export class WalletService extends AuthenticatedBaseService {
