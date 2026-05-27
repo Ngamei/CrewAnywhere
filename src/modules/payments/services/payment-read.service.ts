@@ -83,13 +83,16 @@ export class PaymentReadService extends AuthenticatedBaseService {
 
     await this.assertPaymentReadAccess(payment);
 
-    const escrow = await this.getRepository().findEscrowByPaymentId(paymentId);
+    const [escrow, activeWithdrawal] = await Promise.all([
+      this.getRepository().findEscrowByPaymentId(paymentId),
+      this.getRepository().findActiveWithdrawalByPaymentId(paymentId),
+    ]);
 
     return {
       ...payment,
       escrow,
       lastTransition: null,
-      activeWithdrawal: null,
+      activeWithdrawal: activeWithdrawal as PaymentWithWithdrawalDto['activeWithdrawal'],
     };
   }
 

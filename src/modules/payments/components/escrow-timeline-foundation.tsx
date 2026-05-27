@@ -2,6 +2,7 @@
 
 import { AuditTimeline } from '@/shared/components/operational';
 import { mapEscrowTimelineToAuditEntries } from '@/modules/payments/hooks/escrow-timeline';
+import { usePaymentEscrowTimeline } from '@/modules/payments/hooks/use-payment-data';
 import type { EscrowTimelineEntry } from '@/modules/payments/types';
 
 const placeholder: EscrowTimelineEntry[] = [
@@ -35,9 +36,17 @@ const placeholder: EscrowTimelineEntry[] = [
 ];
 
 type EscrowTimelineFoundationProps = {
+  paymentId?: string;
   entries?: EscrowTimelineEntry[];
 };
 
-export function EscrowTimelineFoundation({ entries = placeholder }: EscrowTimelineFoundationProps) {
+export function EscrowTimelineFoundation({ paymentId, entries: entriesProp }: EscrowTimelineFoundationProps) {
+  const { data: fetchedEntries, isLoading } = usePaymentEscrowTimeline(paymentId);
+  const entries = paymentId ? (fetchedEntries ?? []) : (entriesProp ?? placeholder);
+
+  if (isLoading) {
+    return <div className="h-40 animate-pulse rounded-md bg-muted" aria-busy aria-label="Loading escrow timeline" />;
+  }
+
   return <AuditTimeline entries={mapEscrowTimelineToAuditEntries(entries)} />;
 }

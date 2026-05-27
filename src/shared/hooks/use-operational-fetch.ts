@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useOperationalRefresh } from '@/shared/hooks/use-operational-refresh';
-import { queryKeyMatches } from '@/shared/state/operational-cache';
 
 type UseOperationalFetchOptions<T> = {
   queryKey: readonly unknown[];
@@ -21,30 +20,50 @@ export function useOperationalFetch<T>({
   const [data, setData] = useState<T | undefined>(initialData);
   const [isLoading, setIsLoading] = useState(enabled && initialData === undefined);
   const [error, setError] = useState<Error | null>(null);
+  const [fetchGeneration, setFetchGeneration] = useState(0);
 
-  const reload = useCallback(async () => {
+  useEffect(() => {
     if (!enabled) {
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
+    let cancelled = false;
 
-    try {
-      const result = await fetcher();
-      setData(result);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause : new Error('Request failed'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [enabled, fetcher]);
+    const run = async () => {
+      setIsLoading(true);
+      setError(null);
 
   useEffect(() => {
     queueMicrotask(() => {
       void reload();
     });
   }, [reload, revision]);
+      try {
+        const result = await fetcher();
+        if (!cancelled) {
+          setData(result);
+        }
+      } catch (cause) {
+        if (!cancelled) {
+          setError(cause instanceof Error ? cause : new Error('Request failed'));
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, fetcher, revision, fetchGeneration]);
+
+  const reload = useCallback(() => {
+    setFetchGeneration((value) => value + 1);
+  }, []);
 
   const wasRefreshed = wasInvalidated(queryKey);
 
@@ -56,13 +75,4 @@ export function useOperationalFetch<T>({
     wasRefreshed,
     queryKey,
   };
-}
-
-export function useOperationalQueryInvalidated(queryKey: readonly unknown[]) {
-  const { wasInvalidated } = useOperationalRefresh();
-  return wasInvalidated(queryKey);
-}
-
-export function matchesOperationalPrefix(prefix: readonly unknown[], queryKey: readonly unknown[]) {
-  return queryKeyMatches(prefix, queryKey);
 }
