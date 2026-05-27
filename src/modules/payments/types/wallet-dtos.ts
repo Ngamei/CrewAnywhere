@@ -11,3 +11,13 @@ export type WalletBalanceSummaryDto = Pick<
 
 export type WalletListItemDto = Pick<CrewWalletRecord, 'id' | 'crew_user_id' | 'default_currency' | 'payouts_enabled'> &
   WalletBalanceSummaryDto;
+
+/** Client-safe payout preparation response from POST /api/v1/wallets/payout-preparation. */
+export type PayoutPreparationResult = {
+  crewUserId: string;
+  currency: string;
+  requestedAmount: string;
+  availableBalance: string;
+  canPayout: boolean;
+  detail?: string;
+};

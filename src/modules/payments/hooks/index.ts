@@ -9,6 +9,22 @@ export { mapWalletActivityToFeedItems, buildWalletActivityTitle } from './wallet
 export { mapPaymentWorkflowEventsToTimeline, mapLedgerGroupsToTimeline } from './payment-timeline';
 export { mapEscrowTimelineToAuditEntries } from './escrow-timeline';
 export { toEscrowReadModel } from './escrow-read-model';
+export { toPayoutStatusDisplay, formatWithdrawalStatusLabel } from './payout-status';
+export { useWithdrawalSources, usePayoutMethods } from './use-withdrawal-sources';
+export { useWithdrawalRequest } from './use-withdrawal-request';
+export { useCrewWalletContext } from './use-crew-wallet-context';
+export { useWalletOperational } from './use-wallet-operational';
+export { usePayoutPreparation } from './use-payout-preparation';
+export {
+  useWallet,
+  useWalletBalance,
+  useWalletActivity,
+  useWalletWithdrawals,
+  fetchWalletActivityPage,
+  WALLET_ACTIVITY_PAGE_SIZE,
+} from './use-wallet-data';
+export { useWalletRefresh } from './use-wallet-refresh';
+export { useWalletActivitySubscription } from './use-wallet-activity-subscription';
 export { toPayoutStatusDisplay } from './payout-status';
 export {
   PAYMENT_WORKFLOW_REALTIME_TOPIC,

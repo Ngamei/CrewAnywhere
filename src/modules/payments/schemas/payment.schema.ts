@@ -31,6 +31,7 @@ export const paymentTransitionSchema = z.object({
 });
 
 export const paymentReleaseSchema = paymentTransitionSchema.extend({
+  shiftId: z.string().uuid().optional(),
   shiftCompleted: z.boolean().optional(),
   attendanceValidated: z.boolean().optional(),
 });
@@ -47,7 +48,28 @@ export const payoutPreparationSchema = z.object({
   currency: z.string().length(3).default('USD'),
 });
 
+export const withdrawalIdParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export const createWithdrawalSchema = z.object({
+  paymentId: z.string().uuid(),
+  payoutMethodId: z.string().uuid().optional(),
+  amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  currency: z.string().length(3).default('USD'),
+  idempotencyKey: z.string().trim().min(8).max(128).optional(),
+  reason: z.string().trim().min(1).max(500).optional(),
+  autoAdvance: z.boolean().optional(),
+});
+
+export const withdrawalTransitionSchema = z.object({
+  reason: z.string().trim().min(1).max(500).optional(),
+  idempotencyKey: z.string().trim().min(8).max(128).optional(),
+});
+
 export type PaymentTransitionInput = z.infer<typeof paymentTransitionSchema>;
 export type PaymentReleaseInput = z.infer<typeof paymentReleaseSchema>;
 export type PaymentRefundInput = z.infer<typeof paymentRefundSchema>;
 export type PayoutPreparationInput = z.infer<typeof payoutPreparationSchema>;
+export type CreateWithdrawalInput = z.infer<typeof createWithdrawalSchema>;
+export type WithdrawalTransitionInput = z.infer<typeof withdrawalTransitionSchema>;

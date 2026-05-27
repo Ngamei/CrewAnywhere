@@ -2,25 +2,29 @@ import { AppError } from '@/shared/api/errors';
 import { createDomainRepositoryClients } from '@/backend/repositories/domain-repository-clients';
 import type { AuthenticatedServiceContext } from '@/backend/services/service-context';
 import { LedgerRepository } from '@/modules/payments/repositories';
-import type { FinanceTransactionInsert } from '@/modules/payments/types/finance-transaction-records';
-import type { FinanceLedgerAccount } from '@/shared/state/enums/finance-ledger-account';
 import type { FinanceTransactionType } from '@/shared/state/enums/finance-transaction-type';
+import type { FinanceLedgerAccount } from '@/shared/state/enums/finance-ledger-account';
+import {
+  buildBalancedPairInserts,
+  buildLedgerGroupId,
+  escrowFundingIdempotencyBase,
+  escrowReleaseIdempotencyBase,
+  isPostedGroupBalanced,
+  refundFromEscrowIdempotencyBase,
+  walletCreditIdempotencyBase,
+  withdrawalPayoutIdempotencyBase,
+  withdrawalReservationIdempotencyBase,
+  withdrawalReversalIdempotencyBase,
+  type LedgerPostingContext,
+} from './ledger-posting-helpers';
 
-export type LedgerPostingContext = {
-  paymentId: string;
-  escrowRecordId?: string;
-  refundId?: string;
-  companyProfileId: string;
-  crewUserId: string;
-  amount: string;
-  currency: string;
-  commandId: string;
-};
+export type { LedgerPostingContext };
 
 export type PostedLedgerGroup = {
   ledgerEntryGroupId: string;
   transactionType: FinanceTransactionType;
   lines: Awaited<ReturnType<LedgerRepository['listByLedgerGroupId']>>;
+  replayed: boolean;
 };
 
 /**
@@ -34,16 +38,7 @@ export class LedgerPostingService {
   }
 
   buildLedgerGroupId(): string {
-    return crypto.randomUUID();
-  }
-
-  buildLineIdempotencyKey(baseKey: string, leg: 'debit' | 'credit', sequence: number): string {
-    return `${baseKey}:${leg}:${sequence}`;
-  }
-
-  async isLedgerGroupBalanced(ledgerEntryGroupId: string): Promise<boolean> {
-    const balance = await this.getLedgerRepository().sumPostedGroupBalance(ledgerEntryGroupId);
-    return balance === '0.00';
+    return buildLedgerGroupId();
   }
 
   async postBalancedPair(input: {
@@ -56,55 +51,34 @@ export class LedgerPostingService {
     metadata?: Record<string, unknown>;
   }): Promise<PostedLedgerGroup> {
     const ledger = this.getLedgerRepository();
-    const ledgerEntryGroupId = input.ledgerEntryGroupId ?? this.buildLedgerGroupId();
-    const debitKey = this.buildLineIdempotencyKey(input.idempotencyBaseKey, 'debit', 1);
-    const creditKey = this.buildLineIdempotencyKey(input.idempotencyBaseKey, 'credit', 2);
+    const ledgerEntryGroupId = input.ledgerEntryGroupId ?? buildLedgerGroupId();
+    const [debitInsert, creditInsert] = buildBalancedPairInserts({
+      context: input.context,
+      transactionType: input.transactionType,
+      debitAccount: input.debitAccount,
+      creditAccount: input.creditAccount,
+      idempotencyBaseKey: input.idempotencyBaseKey,
+      ledgerEntryGroupId,
+      metadata: input.metadata,
+      requestId: this.context.requestId,
+    });
 
-    const existingDebit = await ledger.findByIdempotencyKey(debitKey);
+    const existingDebit = await ledger.findByIdempotencyKey(debitInsert.idempotency_key);
     if (existingDebit) {
       const lines = await ledger.listByLedgerGroupId(existingDebit.ledger_entry_group_id);
       return {
         ledgerEntryGroupId: existingDebit.ledger_entry_group_id,
         transactionType: input.transactionType,
         lines,
+        replayed: true,
       };
     }
 
-    const base: Omit<FinanceTransactionInsert, 'ledger_account' | 'direction' | 'entry_sequence' | 'idempotency_key'> = {
-      ledger_entry_group_id: ledgerEntryGroupId,
-      payment_id: input.context.paymentId,
-      escrow_record_id: input.context.escrowRecordId,
-      refund_id: input.context.refundId,
-      company_profile_id: input.context.companyProfileId,
-      crew_user_id: input.context.crewUserId,
-      transaction_type: input.transactionType,
-      amount: input.context.amount,
-      currency: input.context.currency,
-      metadata: {
-        commandId: input.context.commandId,
-        requestId: this.context.requestId,
-        ...input.metadata,
-      },
-    };
+    await ledger.insertEntry(debitInsert);
+    await ledger.insertEntry(creditInsert);
 
-    await ledger.insertEntry({
-      ...base,
-      entry_sequence: 1,
-      ledger_account: input.debitAccount,
-      direction: 'debit',
-      idempotency_key: debitKey,
-    });
-
-    await ledger.insertEntry({
-      ...base,
-      entry_sequence: 2,
-      ledger_account: input.creditAccount,
-      direction: 'credit',
-      idempotency_key: creditKey,
-    });
-
-    const balanced = await this.isLedgerGroupBalanced(ledgerEntryGroupId);
-    if (!balanced) {
+    const lines = await ledger.listByLedgerGroupId(ledgerEntryGroupId);
+    if (!isPostedGroupBalanced(lines)) {
       throw new AppError(
         'LEDGER_GROUP_UNBALANCED',
         `Ledger group ${ledgerEntryGroupId} failed balance validation.`,
@@ -112,11 +86,11 @@ export class LedgerPostingService {
       );
     }
 
-    const lines = await ledger.listByLedgerGroupId(ledgerEntryGroupId);
     return {
       ledgerEntryGroupId,
       transactionType: input.transactionType,
       lines,
+      replayed: false,
     };
   }
 
@@ -126,7 +100,7 @@ export class LedgerPostingService {
       transactionType: 'escrow_funding',
       debitAccount: 'business_cash',
       creditAccount: 'escrow',
-      idempotencyBaseKey: `payment:${context.paymentId}:escrow_funding:${context.commandId}`,
+      idempotencyBaseKey: escrowFundingIdempotencyBase(context.paymentId, context.commandId),
     });
   }
 
@@ -136,7 +110,7 @@ export class LedgerPostingService {
       transactionType: 'escrow_release',
       debitAccount: 'escrow',
       creditAccount: 'crew_wallet_pending',
-      idempotencyBaseKey: `payment:${context.paymentId}:escrow_release:${context.commandId}`,
+      idempotencyBaseKey: escrowReleaseIdempotencyBase(context.paymentId, context.commandId),
     });
   }
 
@@ -146,7 +120,7 @@ export class LedgerPostingService {
       transactionType: 'wallet_credit',
       debitAccount: 'crew_wallet_pending',
       creditAccount: 'crew_wallet_available',
-      idempotencyBaseKey: `payment:${context.paymentId}:wallet_credit:${context.commandId}`,
+      idempotencyBaseKey: walletCreditIdempotencyBase(context.paymentId, context.commandId),
     });
   }
 
@@ -156,7 +130,55 @@ export class LedgerPostingService {
       transactionType: 'refund',
       debitAccount: 'escrow',
       creditAccount: 'business_cash',
-      idempotencyBaseKey: `payment:${context.paymentId}:refund:${context.commandId}`,
+      idempotencyBaseKey: refundFromEscrowIdempotencyBase(context.paymentId, context.commandId),
+    });
+  }
+
+  /** Reserves crew available balance into withdrawal clearing (immutable append). */
+  async postWithdrawalReservation(context: LedgerPostingContext): Promise<PostedLedgerGroup> {
+    if (!context.withdrawalRequestId) {
+      throw new AppError('WITHDRAWAL_ID_REQUIRED', 'withdrawalRequestId is required for reservation.', 422);
+    }
+
+    return this.postBalancedPair({
+      context,
+      transactionType: 'withdrawal',
+      debitAccount: 'crew_wallet_available',
+      creditAccount: 'withdrawal_clearing',
+      idempotencyBaseKey: withdrawalReservationIdempotencyBase(
+        context.withdrawalRequestId,
+        context.commandId,
+      ),
+    });
+  }
+
+  /** Posts external payout completion from withdrawal clearing. */
+  async postWithdrawalPayout(context: LedgerPostingContext): Promise<PostedLedgerGroup> {
+    if (!context.withdrawalRequestId) {
+      throw new AppError('WITHDRAWAL_ID_REQUIRED', 'withdrawalRequestId is required for payout.', 422);
+    }
+
+    return this.postBalancedPair({
+      context,
+      transactionType: 'withdrawal_payout',
+      debitAccount: 'withdrawal_clearing',
+      creditAccount: 'external_payout',
+      idempotencyBaseKey: withdrawalPayoutIdempotencyBase(context.withdrawalRequestId, context.commandId),
+    });
+  }
+
+  /** Reverses a prior withdrawal reservation back to available balance. */
+  async postWithdrawalReservationReversal(context: LedgerPostingContext): Promise<PostedLedgerGroup> {
+    if (!context.withdrawalRequestId) {
+      throw new AppError('WITHDRAWAL_ID_REQUIRED', 'withdrawalRequestId is required for reversal.', 422);
+    }
+
+    return this.postBalancedPair({
+      context,
+      transactionType: 'reversal',
+      debitAccount: 'withdrawal_clearing',
+      creditAccount: 'crew_wallet_available',
+      idempotencyBaseKey: withdrawalReversalIdempotencyBase(context.withdrawalRequestId, context.commandId),
     });
   }
 }

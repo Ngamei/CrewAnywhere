@@ -19,7 +19,7 @@ import { AssignmentRepository } from '@/modules/assignments/repositories';
 import { ProposalRepository } from '@/modules/proposals/repositories';
 import { ShiftRepository } from '@/modules/shifts/repositories';
 import { PaymentRepository } from '@/modules/payments/repositories';
-import type { PaymentDto } from '@/modules/payments/types';
+import type { PaymentDto, PayoutPreparationResult } from '@/modules/payments/types';
 import type { PaymentRecord } from '@/modules/payments/types/payment-records';
 import { paymentWorkflowMachine } from '@/shared/state/workflows/payment-lifecycle';
 import type { PaymentTransitionName } from '@/shared/state/workflows/payment-lifecycle';
@@ -33,14 +33,7 @@ type PaymentTransitionOptions = {
   refundApproved?: boolean;
 };
 
-export type PayoutPreparationResult = {
-  crewUserId: string;
-  currency: string;
-  requestedAmount: string;
-  availableBalance: string;
-  canPayout: boolean;
-  detail?: string;
-};
+export type { PayoutPreparationResult };
 
 export class PaymentService extends AuthenticatedBaseService {
   private readonly executor = new WorkflowTransitionExecutor();
@@ -292,18 +285,6 @@ export class PaymentService extends AuthenticatedBaseService {
       fundedAt,
     });
 
-    publishStaffingDomainEvent(
-      'payments.escrow_funded',
-      marked.id,
-      {
-        assignmentId: marked.assignment_id,
-        escrowRecordId: funding.escrow.id,
-        ledgerEntryGroupId: funding.ledgerGroupId,
-        workflowEventId: event.workflow_event_id,
-      },
-      this.context.requestId,
-    );
-
     return this.toDto(marked, event);
   }
 
@@ -312,6 +293,7 @@ export class PaymentService extends AuthenticatedBaseService {
     input: {
       reason?: string;
       idempotencyKey?: string;
+      shiftId?: string;
       shiftCompleted?: boolean;
       attendanceValidated?: boolean;
     } = {},
@@ -324,7 +306,18 @@ export class PaymentService extends AuthenticatedBaseService {
     }
 
     const commandId = input.idempotencyKey ?? this.context.requestId;
-    const release = await this.getEscrowOrchestration().releaseEscrowToWallet(payment, commandId);
+    const shiftContext = input.shiftId
+      ? {
+          shiftId: input.shiftId,
+          shiftCompleted: input.shiftCompleted,
+          attendanceValidated: input.attendanceValidated,
+        }
+      : undefined;
+    const release = await this.getEscrowOrchestration().releaseEscrowToWallet(
+      payment,
+      commandId,
+      shiftContext,
+    );
 
     const transitionName = this.resolveTransitionName('funded', 'released');
     const { payment: transitioned, event } = await this.runTransition(
@@ -342,30 +335,6 @@ export class PaymentService extends AuthenticatedBaseService {
 
     const releasedAt = new Date().toISOString();
     const marked = await this.getPaymentRepository().markReleased(transitioned.id, releasedAt);
-
-    publishStaffingDomainEvent(
-      'payments.payment_released',
-      marked.id,
-      {
-        assignmentId: marked.assignment_id,
-        releaseLedgerGroupId: release.releaseLedgerGroupId,
-        workflowEventId: event.workflow_event_id,
-      },
-      this.context.requestId,
-    );
-
-    publishStaffingDomainEvent(
-      'payments.wallet_credited',
-      marked.id,
-      {
-        crewUserId: marked.crew_user_id,
-        walletCreditLedgerGroupId: release.walletCreditLedgerGroupId,
-        amount: marked.amount,
-        currency: marked.currency,
-        workflowEventId: event.workflow_event_id,
-      },
-      this.context.requestId,
-    );
 
     return this.toDto(marked, event);
   }
@@ -389,16 +358,11 @@ export class PaymentService extends AuthenticatedBaseService {
       return null;
     }
 
-    const shift = await this.getShiftRepository().findById(shiftId);
-    if (!shift || shift.status !== 'completed') {
-      throw new AppError('SHIFT_NOT_COMPLETED', 'Shift must be completed before payment release.', 422);
-    }
-
     return this.releasePayment(payment.id, {
       reason: input.reason ?? `Auto-release after shift ${shiftId} completed`,
       idempotencyKey: input.idempotencyKey,
+      shiftId,
       shiftCompleted: true,
-      attendanceValidated: shift.check_in_at != null && shift.check_out_at != null,
     });
   }
 

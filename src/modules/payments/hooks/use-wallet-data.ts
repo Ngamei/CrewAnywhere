@@ -24,10 +24,28 @@ export function useWalletBalance(crewUserId: string | undefined) {
   });
 }
 
+const WALLET_ACTIVITY_PAGE_SIZE = 25;
+
+export async function fetchWalletActivityPage(
+  crewUserId: string,
+  options: { cursor?: string; limit?: number } = {},
+) {
+  const params = new URLSearchParams();
+  const limit = options.limit ?? WALLET_ACTIVITY_PAGE_SIZE;
+  params.set('limit', String(limit));
+  if (options.cursor) {
+    params.set('cursor', options.cursor);
+  }
+
+  const query = params.toString();
+  const suffix = query ? `?${query}` : '';
+  return fetchApi<WalletActivityFeedItem[]>(`/api/v1/wallets/${crewUserId}/activity${suffix}`);
+}
+
 export function useWalletActivity(crewUserId: string | undefined) {
   const fetcher = useCallback(async () => {
     if (!crewUserId) throw new Error('crewUserId required');
-    return fetchApi<WalletActivityFeedItem[]>(`/api/v1/wallets/${crewUserId}/activity`);
+    return fetchWalletActivityPage(crewUserId);
   }, [crewUserId]);
 
   return useOperationalFetch({
@@ -37,6 +55,8 @@ export function useWalletActivity(crewUserId: string | undefined) {
     initialData: [],
   });
 }
+
+export { WALLET_ACTIVITY_PAGE_SIZE };
 
 export function useWalletWithdrawals(crewUserId: string | undefined) {
   const fetcher = useCallback(async () => {

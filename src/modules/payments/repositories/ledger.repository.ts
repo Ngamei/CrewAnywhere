@@ -35,6 +35,21 @@ export class LedgerRepository extends BaseRepository {
     return (data ?? []) as FinanceTransactionRecord[];
   }
 
+  async listByWithdrawalRequestId(
+    withdrawalRequestId: string,
+    limit = 50,
+  ): Promise<FinanceTransactionRecord[]> {
+    const { data, error } = await this.clients.read
+      .from('finance_transactions')
+      .select(LEDGER_COLUMNS)
+      .eq('withdrawal_request_id', withdrawalRequestId)
+      .order('posted_at', { ascending: true })
+      .limit(limit);
+
+    if (error) throw error;
+    return (data ?? []) as FinanceTransactionRecord[];
+  }
+
   async listByPaymentId(paymentId: string, limit = 100): Promise<FinanceTransactionRecord[]> {
     const { data, error } = await this.clients.read
       .from('finance_transactions')

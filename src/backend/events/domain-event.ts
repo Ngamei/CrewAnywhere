@@ -33,6 +33,13 @@ export type DomainEventName =
   | 'payments.payment_released'
   | 'payments.wallet_credited'
   | 'payments.refund_created'
+  | 'payments.withdrawal_requested'
+  | 'payments.withdrawal_reviewing'
+  | 'payments.withdrawal_approved'
+  | 'payments.withdrawal_processing'
+  | 'payments.withdrawal_paid'
+  | 'payments.withdrawal_failed'
+  | 'payments.withdrawal_cancelled'
   | 'audit.event_recorded';
 
 export type DomainEvent<TPayload extends Record<string, unknown> = Record<string, unknown>> = {

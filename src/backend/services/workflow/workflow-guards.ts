@@ -2,7 +2,14 @@ import type { JobRecord } from '@/modules/jobs/types/job-records';
 import type { ProposalRecord } from '@/modules/proposals/types/proposal-records';
 import type { AssignmentRecord } from '@/modules/assignments/types/assignment-records';
 import type { ShiftRecord } from '@/modules/shifts/types/shift-records';
-import type { EscrowRecord, PaymentRecord } from '@/modules/payments/types/payment-records';
+import type {
+  EscrowRecord,
+  PaymentRecord,
+  WithdrawalRequestRecord,
+} from '@/modules/payments/types/payment-records';
+import type { CrewWalletBalanceRecord } from '@/modules/payments/types/wallet-records';
+import type { PayoutMethodRecord } from '@/modules/payments/repositories/withdrawal.repository';
+import type { FinanceTransactionRecord } from '@/modules/payments/types/finance-transaction-records';
 import type { CrewProfileRecord } from '@/modules/profiles/types/profile-records';
 import {
   isAttendanceWindowExpired,
@@ -24,6 +31,21 @@ export type AssignmentGuardContext = {
   identity: PlatformIdentity;
   proposal: ProposalRecord;
   ownerBusinessUserId: string;
+};
+
+export type WithdrawalGuardContext = {
+  identity: PlatformIdentity;
+  withdrawal: WithdrawalRequestRecord;
+  payment: PaymentRecord;
+  payoutMethod: PayoutMethodRecord | null;
+  walletBalance: CrewWalletBalanceRecord | null;
+  ledgerLines: FinanceTransactionRecord[];
+  riskScreenPassed?: boolean;
+  riskScreenFailed?: boolean;
+  providerPayoutCreated?: boolean;
+  providerPayoutConfirmed?: boolean;
+  providerPayoutFailed?: boolean;
+  providerRejected?: boolean;
 };
 
 export type PaymentGuardContext = {
@@ -371,6 +393,149 @@ export function evaluatePaymentGuards(
           key,
           passed: paymentStubEnabled,
           detail: paymentStubEnabled ? 'foundation_stub' : 'not_implemented',
+        });
+        break;
+      default:
+        checks.push({ key, passed: false, detail: `unknown_guard:${key}` });
+    }
+  }
+
+  return result(checks);
+}
+
+function hasWithdrawalLedgerType(
+  lines: FinanceTransactionRecord[],
+  withdrawalId: string,
+  transactionType: FinanceTransactionRecord['transaction_type'],
+): boolean {
+  return lines.some(
+    (line) =>
+      line.withdrawal_request_id === withdrawalId &&
+      line.transaction_type === transactionType &&
+      line.status === 'posted',
+  );
+}
+
+/**
+ * Evaluates withdrawal workflow guards for `transition_workflow_entity`.
+ */
+export function evaluateWithdrawalGuards(
+  guardKeys: readonly string[],
+  context: WithdrawalGuardContext,
+): WorkflowGuardResult {
+  const checks: WorkflowGuardResult['checks'] = [];
+  const withdrawalStubEnabled = process.env.CREWANYWHERE_FOUNDATION_WITHDRAWAL_STUB !== 'false';
+  const paymentStubEnabled = process.env.CREWANYWHERE_FOUNDATION_PAYMENT_STUB !== 'false';
+
+  const availableBalance = Number.parseFloat(
+    context.walletBalance?.available_balance?.toString() ?? '0',
+  );
+  const requestedAmount = Number.parseFloat(context.withdrawal.amount);
+
+  for (const key of guardKeys) {
+    switch (key) {
+      case 'wallet_available_balance_sufficient':
+        checks.push({
+          key,
+          passed: requestedAmount > 0 && requestedAmount <= availableBalance,
+          detail:
+            requestedAmount > availableBalance ? 'insufficient_available_balance' : undefined,
+        });
+        break;
+      case 'payout_method_verified':
+        checks.push({
+          key,
+          passed:
+            withdrawalStubEnabled ||
+            (context.payoutMethod != null && context.payoutMethod.verified_at != null),
+          detail: withdrawalStubEnabled ? 'foundation_stub' : undefined,
+        });
+        break;
+      case 'risk_screen_required':
+        checks.push({
+          key,
+          passed: withdrawalStubEnabled || context.withdrawal.amount !== '',
+          detail: withdrawalStubEnabled ? 'foundation_stub' : undefined,
+        });
+        break;
+      case 'risk_screen_passed':
+        checks.push({
+          key,
+          passed: context.riskScreenPassed === true || withdrawalStubEnabled,
+          detail: withdrawalStubEnabled ? 'foundation_stub' : undefined,
+        });
+        break;
+      case 'risk_screen_failed':
+        checks.push({
+          key,
+          passed: context.riskScreenFailed === true || withdrawalStubEnabled,
+          detail: withdrawalStubEnabled ? 'foundation_stub' : undefined,
+        });
+        break;
+      case 'ledger_reservation_created':
+        checks.push({
+          key,
+          passed:
+            hasWithdrawalLedgerType(context.ledgerLines, context.withdrawal.id, 'withdrawal') ||
+            withdrawalStubEnabled,
+          detail: withdrawalStubEnabled ? 'foundation_stub' : 'reservation_required',
+        });
+        break;
+      case 'ledger_reservation_reversed':
+        checks.push({
+          key,
+          passed:
+            hasWithdrawalLedgerType(context.ledgerLines, context.withdrawal.id, 'reversal') ||
+            withdrawalStubEnabled,
+          detail: withdrawalStubEnabled ? 'foundation_stub' : 'reversal_required',
+        });
+        break;
+      case 'ledger_payout_posted':
+        checks.push({
+          key,
+          passed:
+            hasWithdrawalLedgerType(
+              context.ledgerLines,
+              context.withdrawal.id,
+              'withdrawal_payout',
+            ) || withdrawalStubEnabled,
+          detail: withdrawalStubEnabled ? 'foundation_stub' : 'payout_ledger_required',
+        });
+        break;
+      case 'crew_owns_withdrawal':
+        checks.push({
+          key,
+          passed: context.identity.crewUser?.id === context.withdrawal.crew_user_id,
+        });
+        break;
+      case 'admin_or_crew_authorized':
+        checks.push({
+          key,
+          passed:
+            context.identity.role === 'platform_admin' ||
+            context.identity.crewUser?.id === context.withdrawal.crew_user_id,
+        });
+        break;
+      case 'admin_authorized':
+        checks.push({
+          key,
+          passed: context.identity.role === 'platform_admin',
+        });
+        break;
+      case 'provider_payout_created':
+      case 'provider_payout_confirmed':
+      case 'provider_payout_failed':
+      case 'provider_rejected':
+        checks.push({
+          key,
+          passed:
+            withdrawalStubEnabled ||
+            paymentStubEnabled ||
+            (key === 'provider_payout_created' && context.providerPayoutCreated === true) ||
+            (key === 'provider_payout_confirmed' && context.providerPayoutConfirmed === true) ||
+            (key === 'provider_payout_failed' && context.providerPayoutFailed === true) ||
+            (key === 'provider_rejected' && context.providerRejected === true),
+          detail: withdrawalStubEnabled ? 'foundation_stub' : undefined,
         });
         break;
       default:

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { WorkflowStatusBadge } from '@/shared/components/operational';
 import { resolveWithdrawalOperationalState } from '@/modules/payments/types';
 import type { PayoutStatusDisplay } from '@/modules/payments/types';
+import { PayoutStatusIndicator } from './payout-status-indicator';
 
 type PayoutStatusCardProps = {
   payout: PayoutStatusDisplay;
@@ -27,6 +28,7 @@ export function PayoutStatusCard({ payout }: PayoutStatusCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
+        <PayoutStatusIndicator payout={payout} />
         <p className="text-sm font-medium">
           Phase: {operational.phase.replace(/_/g, ' ')}
           {operational.isTerminal ? ' (terminal)' : ''}

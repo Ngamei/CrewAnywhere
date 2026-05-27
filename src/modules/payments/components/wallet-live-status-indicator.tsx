@@ -7,10 +7,17 @@ import {
   type WalletRealtimeConnectionState,
 } from '@/modules/payments/hooks/use-wallet-activity-subscription';
 
+export type WalletLiveStatusSnapshot = {
+  connectionState: WalletRealtimeConnectionState;
+  lastActivityAt: string | null;
+};
+
 type WalletLiveStatusIndicatorProps = {
   crewUserId?: string;
   paymentId?: string;
   className?: string;
+  /** When provided, skips creating a duplicate Supabase subscription (e.g. from useWalletOperational). */
+  realtime?: WalletLiveStatusSnapshot;
 };
 
 function mapConnectionToIndicator(connectionState: WalletRealtimeConnectionState) {
@@ -26,8 +33,19 @@ function mapConnectionToIndicator(connectionState: WalletRealtimeConnectionState
   }
 }
 
-export function WalletLiveStatusIndicator({ crewUserId, paymentId, className }: WalletLiveStatusIndicatorProps) {
-  const { connectionState, lastActivityAt } = useWalletActivitySubscription({ crewUserId, paymentId });
+export function WalletLiveStatusIndicator({
+  crewUserId,
+  paymentId,
+  className,
+  realtime,
+}: WalletLiveStatusIndicatorProps) {
+  const subscription = useWalletActivitySubscription({
+    crewUserId,
+    paymentId,
+    enabled: realtime === undefined,
+  });
+  const connectionState = realtime?.connectionState ?? subscription.connectionState;
+  const lastActivityAt = realtime?.lastActivityAt ?? subscription.lastActivityAt;
 
   const indicator = mapConnectionToIndicator(connectionState);
 

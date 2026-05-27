@@ -5,11 +5,12 @@ import { proposalWorkflowMachine } from '@/shared/state/workflows/proposal-lifec
 import { assignmentWorkflowMachine } from '@/shared/state/workflows/assignment-lifecycle';
 import { shiftWorkflowMachine } from '@/shared/state/workflows/shift-lifecycle';
 import { paymentWorkflowMachine } from '@/shared/state/workflows/payment-lifecycle';
+import { withdrawalWorkflowMachine } from '@/shared/state/workflows/withdrawal-lifecycle';
 import type { WorkflowTransitionCommand, WorkflowTransitionEventRecord } from './types';
 
 /**
  * Canonical executor for `public.transition_workflow_entity`.
- * All proposal, assignment, shift, and payment status changes MUST go through this class.
+ * All proposal, assignment, shift, payment, and withdrawal status changes MUST go through this class.
  */
 export class WorkflowTransitionExecutor {
   constructor(private readonly adminClient: SupabaseClient = createSupabaseAdminClient()) {}
@@ -39,7 +40,12 @@ export class WorkflowTransitionExecutor {
                   from as Parameters<typeof paymentWorkflowMachine.canTransition>[0],
                   to as Parameters<typeof paymentWorkflowMachine.canTransition>[1],
                 )
-              : false;
+              : command.entityType === 'withdrawal'
+                ? withdrawalWorkflowMachine.canTransition(
+                    from as Parameters<typeof withdrawalWorkflowMachine.canTransition>[0],
+                    to as Parameters<typeof withdrawalWorkflowMachine.canTransition>[1],
+                  )
+                : false;
 
     if (!allowed) {
       throw new AppError(

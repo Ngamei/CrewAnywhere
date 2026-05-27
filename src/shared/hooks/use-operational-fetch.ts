@@ -33,6 +33,11 @@ export function useOperationalFetch<T>({
       setIsLoading(true);
       setError(null);
 
+  useEffect(() => {
+    queueMicrotask(() => {
+      void reload();
+    });
+  }, [reload, revision]);
       try {
         const result = await fetcher();
         if (!cancelled) {

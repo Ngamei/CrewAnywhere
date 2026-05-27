@@ -4,27 +4,26 @@ import type { AuthenticatedServiceContext } from '@/backend/services/service-con
 import { PaymentRepository } from '@/modules/payments/repositories';
 import type { EscrowRecord, PaymentRecord } from '@/modules/payments/types/payment-records';
 import { LedgerPostingService, type LedgerPostingContext } from './ledger-posting.service';
+import { EscrowFundingService, type EscrowFundingResult } from './escrow-funding.service';
+import {
+  EscrowReleaseService,
+  type EscrowReleaseResult,
+  type EscrowReleaseShiftContext,
+} from './escrow-release.service';
 
-export type EscrowFundingResult = {
-  payment: PaymentRecord;
-  escrow: EscrowRecord;
-  ledgerGroupId: string;
-};
-
-export type EscrowReleaseResult = {
-  payment: PaymentRecord;
-  escrow: EscrowRecord;
-  releaseLedgerGroupId: string;
-  walletCreditLedgerGroupId: string;
-};
+export type { EscrowFundingResult, EscrowReleaseResult, EscrowReleaseShiftContext };
 
 /**
- * Coordinates escrow row state with immutable ledger postings.
+ * Facade coordinating escrow funding and release services with refund ledger support.
  */
 export class EscrowOrchestrationService {
+  private readonly funding: EscrowFundingService;
+  private readonly release: EscrowReleaseService;
   private readonly ledger: LedgerPostingService;
 
   constructor(private readonly context: AuthenticatedServiceContext) {
+    this.funding = new EscrowFundingService(context);
+    this.release = new EscrowReleaseService(context);
     this.ledger = new LedgerPostingService(context);
   }
 
@@ -50,74 +49,20 @@ export class EscrowOrchestrationService {
     };
   }
 
-  async ensureEscrowRecord(payment: PaymentRecord): Promise<EscrowRecord> {
-    const repo = this.getPaymentRepository();
-    const existing = await repo.findEscrowByPaymentId(payment.id);
-    if (existing) return existing;
-
-    return repo.insertEscrow({
-      paymentId: payment.id,
-      amount: payment.amount,
-      currency: payment.currency,
-    });
+  ensureEscrowRecord(payment: PaymentRecord): Promise<EscrowRecord> {
+    return this.funding.ensureEscrowRecord(payment);
   }
 
-  async fundEscrow(payment: PaymentRecord, commandId: string): Promise<EscrowFundingResult> {
-    if (payment.status !== 'authorized') {
-      throw new AppError('PAYMENT_NOT_AUTHORIZED', 'Payment must be authorized before escrow funding.', 422);
-    }
-
-    const repo = this.getPaymentRepository();
-    const escrow = await this.ensureEscrowRecord(payment);
-    const ctx = this.postingContext(payment, escrow, commandId);
-
-    const posted = await this.ledger.postEscrowFunding(ctx);
-    const fundedAt = new Date().toISOString();
-
-    const updatedEscrow = await repo.updateEscrowStatus(escrow.id, 'funded', {
-      amountHeld: payment.amount,
-      fundedAt,
-    });
-
-    return {
-      payment,
-      escrow: updatedEscrow,
-      ledgerGroupId: posted.ledgerEntryGroupId,
-    };
+  fundEscrow(payment: PaymentRecord, commandId: string): Promise<EscrowFundingResult> {
+    return this.funding.fundEscrow(payment, commandId);
   }
 
-  async releaseEscrowToWallet(payment: PaymentRecord, commandId: string): Promise<EscrowReleaseResult> {
-    if (payment.status !== 'funded') {
-      throw new AppError('PAYMENT_NOT_FUNDED', 'Payment must be funded before release.', 422);
-    }
-
-    const repo = this.getPaymentRepository();
-    const escrow = await repo.findEscrowByPaymentId(payment.id);
-    if (!escrow) {
-      throw new AppError('ESCROW_NOT_FOUND', 'Escrow record is required for payment release.', 422);
-    }
-
-    if (escrow.status !== 'funded' && escrow.status !== 'held') {
-      throw new AppError('ESCROW_NOT_FUNDED', 'Escrow must be funded before release.', 422);
-    }
-
-    await repo.ensureCrewWallet(payment.crew_user_id, payment.currency);
-
-    const ctx = this.postingContext(payment, escrow, commandId);
-    const releasePosted = await this.ledger.postEscrowRelease(ctx);
-    const walletPosted = await this.ledger.postWalletCredit(ctx);
-
-    const releasedAt = new Date().toISOString();
-    const updatedEscrow = await repo.updateEscrowStatus(escrow.id, 'released', {
-      releasedAt,
-    });
-
-    return {
-      payment,
-      escrow: updatedEscrow,
-      releaseLedgerGroupId: releasePosted.ledgerEntryGroupId,
-      walletCreditLedgerGroupId: walletPosted.ledgerEntryGroupId,
-    };
+  releaseEscrowToWallet(
+    payment: PaymentRecord,
+    commandId: string,
+    shiftContext?: EscrowReleaseShiftContext,
+  ): Promise<EscrowReleaseResult> {
+    return this.release.releaseEscrowToWallet(payment, commandId, shiftContext);
   }
 
   async createRefundLedger(
