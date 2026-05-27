@@ -3,6 +3,8 @@ export type {
   FinanceTransactionInsert,
   FinanceTransactionRecord,
 } from './finance-transaction-records';
+export type { TransactionActivityRecord } from './transaction-activity-records';
+export { buildTransactionActivityFromLedgerLines } from './transaction-activity-records';
 export type { CrewWalletRecord, CrewWalletBalanceRecord } from './wallet-records';
 export type { PaymentDto, PaymentListItemDto, PaymentWithWithdrawalDto } from './payment-dtos';
 export type { WalletDto, WalletBalanceSummaryDto, WalletListItemDto } from './wallet-dtos';

@@ -41,7 +41,9 @@ export function useOperationalFetch<T>({
   }, [enabled, fetcher]);
 
   useEffect(() => {
-    void reload();
+    queueMicrotask(() => {
+      void reload();
+    });
   }, [reload, revision]);
 
   const wasRefreshed = wasInvalidated(queryKey);

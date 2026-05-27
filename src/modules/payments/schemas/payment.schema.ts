@@ -31,6 +31,7 @@ export const paymentTransitionSchema = z.object({
 });
 
 export const paymentReleaseSchema = paymentTransitionSchema.extend({
+  shiftId: z.string().uuid().optional(),
   shiftCompleted: z.boolean().optional(),
   attendanceValidated: z.boolean().optional(),
 });
