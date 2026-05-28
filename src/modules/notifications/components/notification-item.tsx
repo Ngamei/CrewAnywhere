@@ -5,9 +5,12 @@ import type { Route } from 'next';
 import {
   Activity,
   AlertTriangle,
+  Briefcase,
   Bell,
   Clock,
   CreditCard,
+  UserCheck,
+  UserCircle,
   Workflow,
   type LucideIcon,
 } from 'lucide-react';
@@ -21,6 +24,11 @@ const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
   operational_alert: AlertTriangle,
   payment: CreditCard,
   shift_reminder: Clock,
+  proposal: Briefcase,
+  hiring: UserCheck,
+  assignment: Workflow,
+  onboarding: UserCheck,
+  profile: UserCircle,
 };
 
 const CATEGORY_LABELS: Record<NotificationCategory, string> = {
@@ -29,6 +37,11 @@ const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   operational_alert: 'Alert',
   payment: 'Payment',
   shift_reminder: 'Shift',
+  proposal: 'Proposal',
+  hiring: 'Hiring',
+  assignment: 'Assignment',
+  onboarding: 'Onboarding',
+  profile: 'Profile',
 };
 
 type NotificationItemProps = {

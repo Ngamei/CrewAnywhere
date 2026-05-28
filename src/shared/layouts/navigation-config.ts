@@ -2,6 +2,7 @@ import type { Route } from 'next';
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
+  Bell,
   Briefcase,
   CalendarDays,
   ClipboardList,
@@ -37,6 +38,12 @@ export const operationalNavItems: NavItem[] = [
     href: '/dashboard/workflows' as Route,
     icon: Workflow,
     description: 'Lifecycle queues and transitions',
+  },
+  {
+    title: 'Notifications',
+    href: '/dashboard/notifications' as Route,
+    icon: Bell,
+    description: 'Role-aware realtime notifications and operational alerts',
   },
   {
     title: 'Activity',

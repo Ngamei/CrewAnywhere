@@ -1,5 +1,10 @@
-import { AuditTimeline } from '@/shared/components/operational';
+'use client';
+
+import { useCallback } from 'react';
 import { mapWorkflowEventsToTimeline } from '@/modules/proposals/hooks/workflow-timeline';
+import { AuditTimeline, AsyncBoundary } from '@/shared/components/operational';
+import { useOperationalFetch } from '@/shared/hooks/use-operational-fetch';
+import type { ApiSuccess } from '@/shared/api/responses';
 
 type WorkflowEventRow = {
   workflow_event_id: string;
@@ -22,9 +27,34 @@ const placeholderEvents: WorkflowEventRow[] = [
 ];
 
 type ProposalWorkflowTimelineProps = {
-  events?: WorkflowEventRow[];
+  proposalId?: string;
 };
 
-export function ProposalWorkflowTimeline({ events = placeholderEvents }: ProposalWorkflowTimelineProps) {
-  return <AuditTimeline entries={mapWorkflowEventsToTimeline(events)} />;
+export function ProposalWorkflowTimeline({ proposalId }: ProposalWorkflowTimelineProps) {
+  const fetcher = useCallback(async (): Promise<WorkflowEventRow[]> => {
+    if (!proposalId) return placeholderEvents;
+    const response = await fetch(`/api/v1/proposals/${proposalId}/timeline`, { credentials: 'include' });
+    const body = (await response.json().catch(() => null)) as
+      | ApiSuccess<WorkflowEventRow[]>
+      | { error?: { message?: string } }
+      | null;
+    if (!response.ok || !body || !('data' in body)) {
+      throw new Error(
+        (body && 'error' in body && body.error?.message) ||
+          `Unable to load workflow timeline (${response.status})`,
+      );
+    }
+    return body.data;
+  }, [proposalId]);
+
+  const query = useOperationalFetch({
+    queryKey: ['proposal', 'timeline', proposalId ?? 'placeholder'],
+    fetcher,
+  });
+
+  return (
+    <AsyncBoundary isLoading={query.isLoading} error={query.error} onRetry={query.reload}>
+      <AuditTimeline entries={mapWorkflowEventsToTimeline(query.data ?? placeholderEvents)} />
+    </AsyncBoundary>
+  );
 }

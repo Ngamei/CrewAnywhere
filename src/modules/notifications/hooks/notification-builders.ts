@@ -17,6 +17,7 @@ type BuildNotificationInput = {
   entityType?: string;
   entityId?: string;
   metadata?: Record<string, unknown>;
+  source?: 'workflow_event' | 'system';
 };
 
 function buildNotification(input: BuildNotificationInput): OperationalNotification {
@@ -32,6 +33,7 @@ function buildNotification(input: BuildNotificationInput): OperationalNotificati
     entityType: input.entityType,
     entityId: input.entityId,
     metadata: input.metadata,
+    source: input.source ?? 'system',
   };
 }
 

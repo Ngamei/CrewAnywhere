@@ -22,4 +22,11 @@ export {
   useShiftActivitySubscription,
   type ShiftRealtimeConnectionState,
 } from './use-shift-activity-subscription';
+export {
+  useAssignmentPayment,
+  useShiftDetail,
+  useShiftExecutionActions,
+  useShiftsByAssignment,
+  useShiftTimeline,
+} from './use-shift-execution-data';
 export { useOperationalRefresh } from '@/shared/hooks/use-operational-refresh';

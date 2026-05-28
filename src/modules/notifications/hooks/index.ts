@@ -7,3 +7,4 @@ export {
   buildWorkflowNotification,
 } from './notification-builders';
 export { useNotifications } from './use-notifications';
+export { useNotificationRealtimeSubscription } from './use-notification-realtime-subscription';

@@ -8,7 +8,12 @@ export type NotificationCategory =
   | 'workflow'
   | 'operational_alert'
   | 'payment'
-  | 'shift_reminder';
+  | 'shift_reminder'
+  | 'proposal'
+  | 'hiring'
+  | 'assignment'
+  | 'onboarding'
+  | 'profile';
 
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 
@@ -27,6 +32,7 @@ export type OperationalNotification = {
   entityType?: string;
   entityId?: string;
   metadata?: Record<string, unknown>;
+  source?: 'workflow_event' | 'system';
 };
 
 export type NotificationFilter = {

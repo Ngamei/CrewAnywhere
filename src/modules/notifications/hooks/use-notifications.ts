@@ -11,6 +11,8 @@ import {
 import { useNotificationStore } from '@/modules/notifications/state/notification-store';
 import type { NotificationCategory, NotificationFilter } from '@/modules/notifications/types';
 import { useOperationalRefresh } from '@/shared/hooks/use-operational-refresh';
+import { isPlatformSessionPayload } from '@/shared/auth/types';
+import { usePlatformSession } from '@/shared/hooks/use-platform-session';
 import { queryKeys } from '@/shared/state/query-keys';
 
 const CATEGORY_LABELS: Record<NotificationCategory, string> = {
@@ -19,9 +21,43 @@ const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   operational_alert: 'Alerts',
   payment: 'Payments',
   shift_reminder: 'Shift reminders',
+  proposal: 'Proposals',
+  hiring: 'Hiring',
+  assignment: 'Assignments',
+  onboarding: 'Onboarding',
+  profile: 'Profile',
 };
 
+function canRoleSeeCategory(category: NotificationCategory, role: string | undefined): boolean {
+  if (!role || role === 'platform_admin') return true;
+  if (role === 'crew') {
+    return [
+      'activity',
+      'workflow',
+      'payment',
+      'shift_reminder',
+      'proposal',
+      'assignment',
+      'onboarding',
+      'profile',
+    ].includes(category);
+  }
+  return [
+    'activity',
+    'workflow',
+    'operational_alert',
+    'payment',
+    'shift_reminder',
+    'proposal',
+    'hiring',
+    'assignment',
+    'profile',
+  ].includes(category);
+}
+
 export function useNotifications(filter?: NotificationFilter) {
+  const { data: session } = usePlatformSession();
+  const role = session && isPlatformSessionPayload(session) ? session.identity.role : undefined;
   const notifications = useNotificationStore((state) => state.notifications);
   const push = useNotificationStore((state) => state.push);
   const markRead = useNotificationStore((state) => state.markRead);
@@ -33,19 +69,22 @@ export function useNotifications(filter?: NotificationFilter) {
   const items = useMemo(() => {
     return notifications.filter((n) => {
       if (n.status === 'archived') return false;
+      if (!canRoleSeeCategory(n.category, role)) return false;
       if (filter?.category && n.category !== filter.category) return false;
       if (filter?.status && n.status !== filter.status) return false;
       return true;
     });
-  }, [notifications, filter]);
+  }, [notifications, filter, role]);
 
   const unreadCount = useMemo(
     () =>
       notifications.filter(
         (n) =>
-          n.status === 'unread' && (!filter?.category || n.category === filter.category),
+          n.status === 'unread' &&
+          canRoleSeeCategory(n.category, role) &&
+          (!filter?.category || n.category === filter.category),
       ).length,
-    [notifications, filter],
+    [notifications, filter, role],
   );
 
   const pushAndInvalidate = useCallback(
