@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { JobsTableFoundation } from '@/modules/jobs/components';
+import { demoJobs } from '@/shared/demo/operational-demo-data';
 import { Button } from '@/shared/ui/button';
 
 export default function JobsShellPage() {
@@ -18,7 +19,7 @@ export default function JobsShellPage() {
           <Link href={'/dashboard/jobs/new' as Route}>New job</Link>
         </Button>
       </div>
-      <JobsTableFoundation />
+      <JobsTableFoundation data={demoJobs} />
     </section>
   );
 }

@@ -2,18 +2,24 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Building2, UserCircle, Wallet } from 'lucide-react';
+import { Activity, Building2, Clock3, HandCoins, UserCircle, Wallet } from 'lucide-react';
 import { OnboardingNextStepCard } from '@/modules/onboarding/components/onboarding-next-step-card';
 import { OnboardingProgressCard } from '@/modules/onboarding/components/onboarding-progress-card';
 import { useOperationalOnboarding } from '@/modules/onboarding/hooks/use-operational-onboarding';
+import { useNotifications } from '@/modules/notifications/hooks';
 import { ReadinessIndicator } from '@/modules/profiles/components/readiness-indicator';
 import { AsyncBoundary } from '@/shared/components/operational';
 import { FormSectionSkeleton } from '@/shared/components/operational/loading-states';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Badge } from '@/shared/ui/badge';
 import { isBusinessActor, isCrewActor } from '@/shared/auth/roles';
+import { getDemoDashboardMetrics } from '@/shared/demo/operational-demo-data';
 
 export function DashboardOnboardingHub() {
   const onboarding = useOperationalOnboarding();
+  const { notifications } = useNotifications();
+  const metrics = getDemoDashboardMetrics();
+  const realtimeCount = notifications.filter((item) => item.status === 'unread').length;
 
   const quickLinks = [
     {
@@ -62,6 +68,66 @@ export function DashboardOnboardingHub() {
         onRetry={onboarding.refreshReadiness}
         loadingFallback={<FormSectionSkeleton rows={4} />}
       >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Active jobs</CardDescription>
+              <CardTitle className="text-2xl">{metrics.activeJobs}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Proposal pipeline</CardDescription>
+              <CardTitle className="text-2xl">{metrics.activeProposals}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Active shifts</CardDescription>
+              <CardTitle className="text-2xl">{metrics.activeShifts}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Upcoming shifts (24h)</CardDescription>
+              <CardTitle className="text-2xl">{metrics.upcomingShifts}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Pending payouts</CardDescription>
+              <CardTitle className="text-2xl">{metrics.pendingPayouts}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Onboarding completion</CardDescription>
+              <CardTitle className="text-2xl">{Math.max(onboarding.overallPercent, metrics.onboardingCompletionPercent)}%</CardTitle>
+            </CardHeader>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Operational realtime summary</CardTitle>
+            <CardDescription>Live domain awareness from notifications and workflow updates.</CardDescription>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary" className="gap-1">
+                <Activity className="size-3.5" />
+                {realtimeCount} unread events
+              </Badge>
+              <Badge variant="secondary" className="gap-1">
+                <Clock3 className="size-3.5" />
+                {metrics.upcomingShifts} shifts require staffing attention
+              </Badge>
+              <Badge variant="secondary" className="gap-1">
+                <HandCoins className="size-3.5" />
+                {metrics.pendingPayouts} payouts in progress
+              </Badge>
+            </div>
+          </CardHeader>
+        </Card>
+
         <div className="grid gap-4 lg:grid-cols-2">
           <OnboardingNextStepCard
             nextStep={onboarding.nextStep}

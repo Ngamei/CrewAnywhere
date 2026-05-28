@@ -5,6 +5,7 @@ import {
   buildActivityNotification,
   buildWorkflowNotification,
 } from '@/modules/notifications/hooks/notification-builders';
+import { demoNotifications } from '@/shared/demo/operational-demo-data';
 import type {
   NotificationCategory,
   NotificationFilter,
@@ -12,6 +13,7 @@ import type {
 } from '@/modules/notifications/types';
 
 const FOUNDATION_SEED_NOTIFICATIONS: OperationalNotification[] = [
+  ...demoNotifications,
   buildActivityNotification({
     title: 'Welcome to operational activity',
     body: 'Realtime domain events will stream here as workflows progress.',

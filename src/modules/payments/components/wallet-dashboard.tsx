@@ -15,6 +15,7 @@ import {
   useWalletWithdrawals,
   useWalletActivitySubscription,
 } from '@/modules/payments/hooks';
+import { demoWalletActivity, demoWalletBalance, demoWithdrawals } from '@/shared/demo/operational-demo-data';
 
 type WalletDashboardProps = {
   crewUserId?: string;
@@ -32,6 +33,9 @@ export function WalletDashboard({ crewUserId: crewUserIdProp }: WalletDashboardP
   const { data: wallet, isLoading: walletLoading } = useWallet(crewUserId);
   const { data: activity, isLoading: activityLoading } = useWalletActivity(crewUserId);
   const { data: withdrawals, isLoading: withdrawalsLoading } = useWalletWithdrawals(crewUserId);
+  const effectiveBalance = balance ?? demoWalletBalance;
+  const effectiveActivity = activity?.length ? activity : demoWalletActivity;
+  const effectiveWithdrawals = withdrawals?.length ? withdrawals : demoWithdrawals;
 
   if (sessionLoading || (!crewUserId && !sessionLoading)) {
     return (
@@ -48,15 +52,15 @@ export function WalletDashboard({ crewUserId: crewUserIdProp }: WalletDashboardP
       <WalletLiveStatusIndicator crewUserId={crewUserId} />
 
       <WalletBalanceShellFoundation
-        balance={balance}
+        balance={effectiveBalance}
         payoutsEnabled={wallet?.payouts_enabled ?? false}
         isLoading={balanceLoading || walletLoading}
-        lastLedgerEntryAt={balance?.last_ledger_entry_at}
+        lastLedgerEntryAt={effectiveBalance.last_ledger_entry_at}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <WithdrawalRequestShell
-          balance={balance}
+          balance={effectiveBalance}
           payoutsEnabled={wallet?.payouts_enabled ?? false}
           isLoading={balanceLoading}
         />
@@ -71,13 +75,13 @@ export function WalletDashboard({ crewUserId: crewUserIdProp }: WalletDashboardP
             <p>
               <span className="text-muted-foreground">Available</span>{' '}
               <span className="font-medium tabular-nums">
-                {balance?.available_balance ?? '—'} {balance?.currency ?? ''}
+                {effectiveBalance.available_balance ?? '—'} {effectiveBalance.currency ?? ''}
               </span>
             </p>
             <p>
               <span className="text-muted-foreground">Pending clearance</span>{' '}
               <span className="font-medium tabular-nums">
-                {balance?.pending_balance ?? '—'} {balance?.currency ?? ''}
+                {effectiveBalance.pending_balance ?? '—'} {effectiveBalance.currency ?? ''}
               </span>
             </p>
           </CardContent>
@@ -87,7 +91,7 @@ export function WalletDashboard({ crewUserId: crewUserIdProp }: WalletDashboardP
       <div className="space-y-3">
         <h3 className="text-lg font-medium">Withdrawal history</h3>
         <p className="text-sm text-muted-foreground">Payout lifecycle from withdrawal workflow status (not ledger balances).</p>
-        <WithdrawalHistory withdrawals={withdrawals ?? []} isLoading={withdrawalsLoading} />
+        <WithdrawalHistory withdrawals={effectiveWithdrawals} isLoading={withdrawalsLoading} />
       </div>
 
       <div className="space-y-3">
@@ -95,7 +99,7 @@ export function WalletDashboard({ crewUserId: crewUserIdProp }: WalletDashboardP
         <p className="text-sm text-muted-foreground">
           Replay-safe feed from immutable ledger — refreshes on workflow_event_outbox broadcasts.
         </p>
-        <WalletActivityFeedFoundation items={activity ?? []} isLoading={activityLoading} />
+        <WalletActivityFeedFoundation items={effectiveActivity} isLoading={activityLoading} />
       </div>
     </div>
   );

@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Input } from '@/shared/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/shared/ui/sheet';
 import { Badge } from '@/shared/ui/badge';
+import { demoMarketplaceJobs, demoProposals } from '@/shared/demo/operational-demo-data';
 
 const columns: OperationalTableColumn<MarketplaceJobListingDto>[] = [
   {
@@ -152,7 +153,7 @@ export function MarketplaceListingFoundation() {
   });
 
   const proposalByJob = useMemo<JobProposalMap>(() => {
-    const entries = myProposalsQuery.data ?? [];
+    const entries = myProposalsQuery.data?.length ? myProposalsQuery.data : demoProposals;
     const map: JobProposalMap = {};
     for (const proposal of entries) {
       map[proposal.job_id] = proposal;
@@ -160,18 +161,25 @@ export function MarketplaceListingFoundation() {
     return map;
   }, [myProposalsQuery.data]);
 
-  const jobs = marketplaceQuery.data?.items ?? [];
+  const jobs = marketplaceQuery.data?.items?.length ? marketplaceQuery.data.items : demoMarketplaceJobs;
   const readinessSnapshot = onboarding.snapshot;
   const profileNotReady = isCrewActor(onboarding.role) && Boolean(readinessSnapshot && !readinessSnapshot.marketplaceReady);
   const missingSections = readinessSnapshot?.completion.sections ?? [];
 
   const selectedBusinessProposal = useMemo(() => {
     if (!selectedProposalId) return null;
-    return (businessJobProposalsQuery.data ?? []).find((proposal) => proposal.id === selectedProposalId) ?? null;
-  }, [businessJobProposalsQuery.data, selectedProposalId]);
+    const proposals =
+      businessJobProposalsQuery.data?.length && selectedJob
+        ? businessJobProposalsQuery.data
+        : demoProposals.filter((proposal) => !selectedJob || proposal.job_id === selectedJob.id);
+    return proposals.find((proposal) => proposal.id === selectedProposalId) ?? null;
+  }, [businessJobProposalsQuery.data, selectedJob, selectedProposalId]);
 
   const statusCounts = useMemo(() => {
-    const proposals = businessJobProposalsQuery.data ?? [];
+    const proposals =
+      businessJobProposalsQuery.data?.length && selectedJob
+        ? businessJobProposalsQuery.data
+        : demoProposals.filter((proposal) => !selectedJob || proposal.job_id === selectedJob.id);
     return {
       applied: proposals.filter((item) => item.status === 'applied').length,
       offer_sent: proposals.filter((item) => item.status === 'offer_sent').length,
@@ -179,7 +187,7 @@ export function MarketplaceListingFoundation() {
       declined: proposals.filter((item) => item.status === 'declined').length,
       hired: proposals.filter((item) => item.status === 'hired').length,
     };
-  }, [businessJobProposalsQuery.data]);
+  }, [businessJobProposalsQuery.data, selectedJob]);
 
   const performProposalAction = async (proposalId: string, action: 'offer' | 'decline' | 'hire') => {
     setActionError(null);
@@ -364,11 +372,17 @@ export function MarketplaceListingFoundation() {
                       />
                     ) : businessJobProposalsQuery.isLoading ? (
                       <p className="text-sm text-muted-foreground">Loading applicants...</p>
-                    ) : (businessJobProposalsQuery.data ?? []).length === 0 ? (
+                    ) : (businessJobProposalsQuery.data?.length
+                        ? businessJobProposalsQuery.data
+                        : demoProposals.filter((proposal) => proposal.job_id === selectedJob.id)
+                      ).length === 0 ? (
                       <p className="text-sm text-muted-foreground">No applicants yet for this job.</p>
                     ) : (
                       <div className="space-y-2">
-                        {(businessJobProposalsQuery.data ?? []).map((proposal) => (
+                        {(businessJobProposalsQuery.data?.length
+                          ? businessJobProposalsQuery.data
+                          : demoProposals.filter((proposal) => proposal.job_id === selectedJob.id)
+                        ).map((proposal) => (
                           <div
                             key={proposal.id}
                             className="rounded-lg border border-border p-3"

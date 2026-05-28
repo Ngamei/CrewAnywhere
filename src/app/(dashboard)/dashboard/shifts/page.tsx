@@ -6,6 +6,7 @@ import { isPlatformSessionPayload } from '@/shared/auth/types';
 import { usePlatformSession } from '@/shared/hooks/use-platform-session';
 import { useShiftsByAssignment } from '@/modules/shifts/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { getDemoShiftsByAssignment } from '@/shared/demo/operational-demo-data';
 
 const DEMO_ASSIGNMENT_ID = '00000000-0000-0000-0000-000000000041';
 
@@ -17,7 +18,7 @@ export default function ShiftsShellPage() {
     role === 'business_owner' || role === 'business_member' || role === 'supervisor' || role === 'platform_admin';
 
   const shifts = useShiftsByAssignment(DEMO_ASSIGNMENT_ID);
-  const shiftRows = shifts.data ?? [];
+  const shiftRows = (shifts.data && shifts.data.length > 0 ? shifts.data : getDemoShiftsByAssignment(DEMO_ASSIGNMENT_ID)) ?? [];
   const totals = {
     assigned: shiftRows.length,
     checkedIn: shiftRows.filter((item) => item.status === 'checked_in' || item.status === 'in_progress').length,

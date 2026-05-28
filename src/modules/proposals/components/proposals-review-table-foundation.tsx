@@ -14,6 +14,7 @@ import type { ApiSuccess } from '@/shared/api/responses';
 import { Badge } from '@/shared/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/shared/ui/sheet';
+import { demoProposals } from '@/shared/demo/operational-demo-data';
 
 const columns: OperationalTableColumn<ProposalListItemDto>[] = [
   {
@@ -72,7 +73,7 @@ export function ProposalsReviewTableFoundation() {
   useProposalActivitySubscription({ proposalId: selectedProposal?.id ?? null, enabled: true });
 
   const pipeline = useMemo(() => {
-    const data = proposalsQuery.data ?? [];
+    const data = proposalsQuery.data?.length ? proposalsQuery.data : demoProposals;
     return {
       total: data.length,
       applied: data.filter((item) => item.status === 'applied').length,
@@ -127,7 +128,7 @@ export function ProposalsReviewTableFoundation() {
         <OperationalTable
           caption="Proposals for review"
           columns={columns}
-          data={proposalsQuery.data ?? []}
+          data={proposalsQuery.data?.length ? proposalsQuery.data : demoProposals}
           getRowId={(row) => row.id}
           emptyState={<ProposalsEmptyState />}
           emptyMessage="No proposals to review."
