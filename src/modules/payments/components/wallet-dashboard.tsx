@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
+import { isPlatformSessionPayload } from '@/shared/auth/types';
 import { usePlatformSession } from '@/shared/hooks/use-platform-session';
 import { WalletBalanceShellFoundation } from './wallet-balance-shell-foundation';
 import { WalletActivityFeedFoundation } from './wallet-activity-feed-foundation';
@@ -21,7 +22,9 @@ type WalletDashboardProps = {
 
 export function WalletDashboard({ crewUserId: crewUserIdProp }: WalletDashboardProps) {
   const { data: session, isLoading: sessionLoading } = usePlatformSession();
-  const crewUserId = crewUserIdProp ?? session?.identity.crewUserId ?? undefined;
+  const crewUserId =
+    crewUserIdProp ??
+    (session && isPlatformSessionPayload(session) ? session.identity.crewUserId ?? undefined : undefined);
 
   useWalletActivitySubscription({ crewUserId, enabled: Boolean(crewUserId) });
 

@@ -1,10 +1,9 @@
 'use client';
 
+import { PaymentsEmptyState } from '@/modules/onboarding';
 import { WorkflowStatusBadge } from '@/shared/components/operational';
 import { OperationalTable, type OperationalTableColumn } from '@/shared/components/operational/operational-table';
 import type { PaymentListItemDto } from '@/modules/payments/types';
-import { resolvePaymentListOperationalLabel } from '@/modules/payments/types';
-
 const columns: OperationalTableColumn<PaymentListItemDto>[] = [
   {
     id: 'assignment',
@@ -46,34 +45,19 @@ const columns: OperationalTableColumn<PaymentListItemDto>[] = [
   },
 ];
 
-const placeholder: PaymentListItemDto[] = [
-  {
-    id: '00000000-0000-0000-0000-000000000050',
-    assignment_id: '00000000-0000-0000-0000-000000000045',
-    company_profile_id: '00000000-0000-0000-0000-000000000010',
-    crew_user_id: '00000000-0000-0000-0000-000000000040',
-    amount: '450.00',
-    currency: 'USD',
-    status: 'funded',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    escrowStatus: 'held',
-    operationalLabel: resolvePaymentListOperationalLabel('funded'),
-  },
-];
-
 type PaymentsTableFoundationProps = {
   data?: PaymentListItemDto[];
   isLoading?: boolean;
 };
 
-export function PaymentsTableFoundation({ data = placeholder, isLoading }: PaymentsTableFoundationProps) {
+export function PaymentsTableFoundation({ data = [], isLoading }: PaymentsTableFoundationProps) {
   return (
     <OperationalTable
       caption="Payments by assignment"
       columns={columns}
       data={data}
       getRowId={(row) => row.id}
+      emptyState={<PaymentsEmptyState />}
       emptyMessage="No payments yet."
       isLoading={isLoading}
     />

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { AuthenticatedLayout } from '@/shared/layouts';
+import { DashboardOnboardingShell } from '@/modules/onboarding';
 import {
   DashboardShellEnhancements,
   DashboardTopNavActions,
@@ -8,7 +9,9 @@ import {
 export default function DashboardRouteLayout({ children }: { children: ReactNode }) {
   return (
     <AuthenticatedLayout topNavActions={<DashboardTopNavActions />}>
-      <DashboardShellEnhancements>{children}</DashboardShellEnhancements>
+      <DashboardShellEnhancements>
+        <DashboardOnboardingShell>{children}</DashboardOnboardingShell>
+      </DashboardShellEnhancements>
     </AuthenticatedLayout>
   );
 }

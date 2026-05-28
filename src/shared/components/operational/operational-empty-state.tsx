@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
+import type { Route } from 'next';
 import {
   Activity,
   Briefcase,
@@ -46,6 +48,8 @@ type OperationalEmptyStateProps = {
   action?: ReactNode;
   onAction?: () => void;
   actionLabel?: string;
+  /** Navigates via Next.js Link when set (preferred over onAction for route CTAs). */
+  actionHref?: Route;
   className?: string;
 };
 
@@ -56,6 +60,7 @@ export function OperationalEmptyState({
   action,
   onAction,
   actionLabel,
+  actionHref,
   className,
 }: OperationalEmptyStateProps) {
   const Icon = VARIANT_ICONS[variant];
@@ -75,11 +80,16 @@ export function OperationalEmptyState({
       {description ? (
         <p className="mt-2 max-w-sm text-sm text-muted-foreground">{description}</p>
       ) : null}
-      {action ?? (onAction && actionLabel ? (
-        <Button type="button" variant="outline" size="sm" className="mt-4" onClick={onAction}>
-          {actionLabel}
-        </Button>
-      ) : null)}
+      {action ??
+        (actionHref && actionLabel ? (
+          <Button asChild variant="outline" size="sm" className="mt-4">
+            <Link href={actionHref}>{actionLabel}</Link>
+          </Button>
+        ) : onAction && actionLabel ? (
+          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={onAction}>
+            {actionLabel}
+          </Button>
+        ) : null)}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
+import { isPlatformSessionPayload } from '@/shared/auth/types';
 import { usePlatformSession } from '@/shared/hooks/use-platform-session';
 import { PaymentsTableFoundation } from './payments-table-foundation';
 import { PaymentWorkflowTimelineFoundation } from './payment-workflow-timeline-foundation';
@@ -14,7 +15,8 @@ const samplePaymentId = '00000000-0000-0000-0000-000000000050';
 
 export function PaymentsDashboard() {
   const { data: session } = usePlatformSession();
-  const crewUserId = session?.identity.crewUserId ?? undefined;
+  const crewUserId =
+    session && isPlatformSessionPayload(session) ? session.identity.crewUserId ?? undefined : undefined;
 
   useWalletActivitySubscription({ crewUserId, enabled: Boolean(crewUserId) });
 

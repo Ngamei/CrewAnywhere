@@ -24,6 +24,8 @@ type OperationalTableProps<T> = {
   getRowId: (row: T) => string;
   isLoading?: boolean;
   emptyMessage?: string;
+  /** When data is empty, render this instead of the default table row message. */
+  emptyState?: ReactNode;
   caption?: string;
   className?: string;
   onRowClick?: (row: T) => void;
@@ -35,12 +37,17 @@ export function OperationalTable<T>({
   getRowId,
   isLoading = false,
   emptyMessage = 'No records found.',
+  emptyState,
   caption,
   className,
   onRowClick,
 }: OperationalTableProps<T>) {
   if (isLoading) {
     return <OperationalTableSkeleton columns={columns.length} className={className} />;
+  }
+
+  if (data.length === 0 && emptyState) {
+    return <>{emptyState}</>;
   }
 
   return (

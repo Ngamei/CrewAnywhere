@@ -1,5 +1,6 @@
 'use client';
 
+import { WalletSetupEmptyState } from '@/modules/onboarding';
 import { AsyncBoundary } from '@/shared/components/operational';
 import { OperationalEmptyState } from '@/shared/components/operational/operational-empty-state';
 import { FormSectionSkeleton } from '@/shared/components/operational/loading-states';
@@ -27,15 +28,7 @@ export function WalletOperationalScreen() {
   }
 
   if (!operational.crewUserId && !operational.isSessionLoading) {
-    return (
-      <OperationalEmptyState
-        variant="profile"
-        title="Crew profile required"
-        description="Complete crew onboarding to open a wallet and view ledger-derived balances."
-        actionLabel="Retry"
-        onAction={operational.reloadSession}
-      />
-    );
+    return <WalletSetupEmptyState />;
   }
 
   const balance = operational.balance ?? {

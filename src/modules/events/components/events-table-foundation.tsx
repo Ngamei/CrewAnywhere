@@ -1,5 +1,6 @@
 'use client';
 
+import { EventsEmptyState } from '@/modules/onboarding';
 import { WorkflowStatusBadge } from '@/shared/components/operational';
 import { OperationalTable, type OperationalTableColumn } from '@/shared/components/operational/operational-table';
 import type { EventListItemDto } from '@/modules/events/types';
@@ -33,27 +34,12 @@ const columns: OperationalTableColumn<EventListItemDto>[] = [
   },
 ];
 
-const placeholderRows: EventListItemDto[] = [
-  {
-    id: '00000000-0000-0000-0000-000000000001',
-    company_profile_id: '00000000-0000-0000-0000-000000000002',
-    title: 'Summer festival staffing',
-    status: 'draft',
-    starts_at: null,
-    ends_at: null,
-    city: 'London',
-    published_at: null,
-    updated_at: new Date().toISOString(),
-    openJobCount: 0,
-  },
-];
-
 type EventsTableFoundationProps = {
   data?: EventListItemDto[];
   isLoading?: boolean;
 };
 
-export function EventsTableFoundation({ data = placeholderRows, isLoading }: EventsTableFoundationProps) {
+export function EventsTableFoundation({ data = [], isLoading }: EventsTableFoundationProps) {
   return (
     <OperationalTable
       caption="Company events"
@@ -61,6 +47,7 @@ export function EventsTableFoundation({ data = placeholderRows, isLoading }: Eve
       data={data}
       getRowId={(row) => row.id}
       isLoading={isLoading}
+      emptyState={<EventsEmptyState />}
       emptyMessage="No events yet. Create one to start staffing."
     />
   );

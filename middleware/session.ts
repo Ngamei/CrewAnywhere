@@ -2,10 +2,15 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import {
   AUTH_LOGIN_PATH,
+  DASHBOARD_HOME_PATH,
+  ONBOARDING_START_PATH,
+  hasCompletedOnboardingCookie,
   isAuthEntryPath,
+  isOnboardingPath,
   isProtectedApiPath,
   isProtectedPagePath,
   isPublicPath,
+  resolvePostAuthPath,
 } from '@/middleware/config';
 import { env } from '@/shared/config/env';
 
@@ -46,6 +51,7 @@ export async function handleSession(request: NextRequest): Promise<SessionMiddle
 
   const userId = user?.id ?? null;
   const isAuthenticated = Boolean(userId);
+  const onboardingComplete = hasCompletedOnboardingCookie(request);
 
   if (isPublicPath(pathname)) {
     return { response, userId };
@@ -53,9 +59,27 @@ export async function handleSession(request: NextRequest): Promise<SessionMiddle
 
   if (isAuthEntryPath(pathname) && isAuthenticated) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/';
+    redirectUrl.pathname = resolvePostAuthPath(request);
     redirectUrl.search = '';
     return { response: NextResponse.redirect(redirectUrl), userId };
+  }
+
+  if (isOnboardingPath(pathname)) {
+    if (!isAuthenticated) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = AUTH_LOGIN_PATH;
+      redirectUrl.searchParams.set('next', pathname);
+      return { response: NextResponse.redirect(redirectUrl), userId: null };
+    }
+
+    if (onboardingComplete && pathname !== `${ONBOARDING_START_PATH}/complete`) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = DASHBOARD_HOME_PATH;
+      redirectUrl.search = '';
+      return { response: NextResponse.redirect(redirectUrl), userId };
+    }
+
+    return { response, userId };
   }
 
   if (!isAuthenticated && isProtectedPagePath(pathname)) {
@@ -63,6 +87,13 @@ export async function handleSession(request: NextRequest): Promise<SessionMiddle
     redirectUrl.pathname = AUTH_LOGIN_PATH;
     redirectUrl.searchParams.set('next', pathname);
     return { response: NextResponse.redirect(redirectUrl), userId: null };
+  }
+
+  if (isAuthenticated && isProtectedPagePath(pathname) && !onboardingComplete) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = ONBOARDING_START_PATH;
+    redirectUrl.search = '';
+    return { response: NextResponse.redirect(redirectUrl), userId };
   }
 
   if (!isAuthenticated && isProtectedApiPath(pathname)) {

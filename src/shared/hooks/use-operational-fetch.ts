@@ -22,6 +22,10 @@ export function useOperationalFetch<T>({
   const [error, setError] = useState<Error | null>(null);
   const [fetchGeneration, setFetchGeneration] = useState(0);
 
+  const reload = useCallback(() => {
+    setFetchGeneration((value) => value + 1);
+  }, []);
+
   useEffect(() => {
     if (!enabled) {
       return;
@@ -33,11 +37,6 @@ export function useOperationalFetch<T>({
       setIsLoading(true);
       setError(null);
 
-  useEffect(() => {
-    queueMicrotask(() => {
-      void reload();
-    });
-  }, [reload, revision]);
       try {
         const result = await fetcher();
         if (!cancelled) {
@@ -60,10 +59,6 @@ export function useOperationalFetch<T>({
       cancelled = true;
     };
   }, [enabled, fetcher, revision, fetchGeneration]);
-
-  const reload = useCallback(() => {
-    setFetchGeneration((value) => value + 1);
-  }, []);
 
   const wasRefreshed = wasInvalidated(queryKey);
 

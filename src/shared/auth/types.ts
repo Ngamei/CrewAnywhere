@@ -94,3 +94,34 @@ export function toPlatformSessionPayload(session: PlatformSession): PlatformSess
     },
   };
 }
+
+/** Supabase-authenticated user without a linked `auth_accounts` row yet. */
+export type IdentityPendingSessionPayload = {
+  authenticated: true;
+  phase: 'identity_pending';
+  user: {
+    id: string;
+    email: string | undefined;
+  };
+};
+
+export type AuthSessionResponse =
+  | { authenticated: false }
+  | PlatformSessionPayload
+  | IdentityPendingSessionPayload;
+
+export function isPlatformSessionPayload(
+  session: AuthSessionResponse,
+): session is PlatformSessionPayload {
+  return session.authenticated === true && 'identity' in session;
+}
+
+export function isIdentityPendingSession(
+  session: AuthSessionResponse,
+): session is IdentityPendingSessionPayload {
+  return session.authenticated === true && 'phase' in session && session.phase === 'identity_pending';
+}
+
+export function isSupabaseAuthenticated(session: AuthSessionResponse) {
+  return session.authenticated === true;
+}

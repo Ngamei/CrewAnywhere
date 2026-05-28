@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
 import { WorkflowStatusBadge } from '@/shared/components/operational';
 import { OperationalTable, type OperationalTableColumn } from '@/shared/components/operational/operational-table';
+import { ShiftsEmptyState } from '@/modules/onboarding';
 import { useShiftActivitySubscription } from '@/modules/shifts/hooks';
 import type { ShiftListItemDto } from '@/modules/shifts/types';
 
@@ -42,35 +43,6 @@ const columns: OperationalTableColumn<ShiftListItemDto>[] = [
   },
 ];
 
-const placeholderRows: ShiftListItemDto[] = [
-  {
-    id: '00000000-0000-0000-0000-000000000050',
-    assignment_id: '00000000-0000-0000-0000-000000000041',
-    event_id: '00000000-0000-0000-0000-000000000001',
-    job_id: '00000000-0000-0000-0000-000000000010',
-    crew_user_id: '00000000-0000-0000-0000-000000000040',
-    status: 'scheduled',
-    starts_at: new Date().toISOString(),
-    ends_at: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-    check_in_at: null,
-    check_out_at: null,
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000051',
-    assignment_id: '00000000-0000-0000-0000-000000000042',
-    event_id: '00000000-0000-0000-0000-000000000001',
-    job_id: '00000000-0000-0000-0000-000000000010',
-    crew_user_id: '00000000-0000-0000-0000-000000000041',
-    status: 'checked_in',
-    starts_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    ends_at: new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),
-    check_in_at: new Date().toISOString(),
-    check_out_at: null,
-    updated_at: new Date().toISOString(),
-  },
-];
-
 type ShiftsTableFoundationProps = {
   data?: ShiftListItemDto[];
   isLoading?: boolean;
@@ -78,7 +50,7 @@ type ShiftsTableFoundationProps = {
 };
 
 export function ShiftsTableFoundation({
-  data = placeholderRows,
+  data = [],
   isLoading,
   assignmentId,
 }: ShiftsTableFoundationProps) {
@@ -92,6 +64,7 @@ export function ShiftsTableFoundation({
       data={data}
       getRowId={(row) => row.id}
       isLoading={isLoading}
+      emptyState={<ShiftsEmptyState />}
       emptyMessage="No shifts scheduled for this scope."
       onRowClick={(row) => router.push(`/dashboard/shifts/${row.id}` as Route)}
     />

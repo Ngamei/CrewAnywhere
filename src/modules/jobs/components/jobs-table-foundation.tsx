@@ -1,5 +1,6 @@
 'use client';
 
+import { JobsEmptyState } from '@/modules/onboarding';
 import { WorkflowStatusBadge } from '@/shared/components/operational';
 import { OperationalTable, type OperationalTableColumn } from '@/shared/components/operational/operational-table';
 import type { JobListItemDto } from '@/modules/jobs/types';
@@ -35,26 +36,12 @@ const columns: OperationalTableColumn<JobListItemDto>[] = [
   },
 ];
 
-const placeholderRows: JobListItemDto[] = [
-  {
-    id: '00000000-0000-0000-0000-000000000010',
-    event_id: '00000000-0000-0000-0000-000000000001',
-    company_profile_id: '00000000-0000-0000-0000-000000000002',
-    title: 'Stage crew',
-    status: 'draft',
-    headcount: 4,
-    rate_amount: 22,
-    updated_at: new Date().toISOString(),
-    requiredSkillCount: 2,
-  },
-];
-
 type JobsTableFoundationProps = {
   data?: JobListItemDto[];
   isLoading?: boolean;
 };
 
-export function JobsTableFoundation({ data = placeholderRows, isLoading }: JobsTableFoundationProps) {
+export function JobsTableFoundation({ data = [], isLoading }: JobsTableFoundationProps) {
   return (
     <OperationalTable
       caption="Event jobs"
@@ -62,6 +49,7 @@ export function JobsTableFoundation({ data = placeholderRows, isLoading }: JobsT
       data={data}
       getRowId={(row) => row.id}
       isLoading={isLoading}
+      emptyState={<JobsEmptyState />}
       emptyMessage="No jobs for this event."
     />
   );

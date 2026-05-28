@@ -1,13 +1,16 @@
 'use client';
 
 import { useMemo } from 'react';
+import { isPlatformSessionPayload } from '@/shared/auth/types';
 import { usePlatformSession } from '@/shared/hooks/use-platform-session';
 
 /** Resolves the authenticated crew user id for wallet routes (crew accounts only). */
 export function useCrewWalletContext() {
   const sessionQuery = usePlatformSession();
-  const crewUserId = sessionQuery.data?.identity.crewUserId ?? undefined;
-  const isCrewAccount = sessionQuery.data?.identity.accountType === 'crew';
+  const identity =
+    sessionQuery.data && isPlatformSessionPayload(sessionQuery.data) ? sessionQuery.data.identity : null;
+  const crewUserId = identity?.crewUserId ?? undefined;
+  const isCrewAccount = identity?.accountType === 'crew';
 
   return useMemo(
     () => ({
