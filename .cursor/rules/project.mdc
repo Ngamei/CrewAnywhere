@@ -1,0 +1,30 @@
+# Cursor Rules - CrewAnywhere
+
+Source of truth: local Markdown files and docs/ folder.
+
+Always check before working:
+- PROJECT_CONTEXT.md
+- CURRENT_STATE.md
+- DECISIONS.md
+- TASKS.md
+- docs/database/architecture.md (for DB work)
+
+## Code Rules
+- Next.js App Router patterns only
+- TypeScript strict mode
+- Tailwind for all styling
+- All DB changes via Supabase migrations only
+- Atomic transition engine required for all state changes
+
+## Architecture Rules
+- Each domain module is self-contained
+- Shared primitives live in shared/ - do not duplicate
+- business_users and crew_users always kept separate
+- No cross-domain imports except through shared layer
+
+## Change Rules
+- Explain what files you changed and why
+- Keep changes minimal and scoped
+- Ask before touching shared primitives or auth layer
+- Add migration files for any schema changes
+- Update DECISIONS.md for architecture choices
