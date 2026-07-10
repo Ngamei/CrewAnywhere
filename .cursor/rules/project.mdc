@@ -9,6 +9,9 @@ Always check before working:
 - TASKS.md
 - docs/database/architecture.md (for DB work)
 
+Also read (AI index): docs/ai/00_AI_INDEX.md -> which points into docs/architecture|auth|database|payments.
+Keep .cursor/rules/project.mdc and CLAUDE.md consistent.
+
 ## Code Rules
 - Next.js App Router patterns only
 - TypeScript strict mode
